@@ -8,29 +8,33 @@ package sysrepo
 import "C"
 import (
 	"fmt"
-	"unsafe"
 )
 
-func Sysrepotest() {
-	fmt.Println("sysrepotest")
+type Connection struct {
+	connection *C.sr_conn_ctx_t
+	connOpts   C.sr_conn_options_t
 }
 
-func Connect() {
-	var connection *C.sr_conn_ctx_t = nil
+func Connect() (Connection, error) {
+	var conn = Connection{connection: nil, connOpts: C.SR_CONN_DEFAULT}
 	var rc C.int = C.SR_ERR_OK
-	var connOpts C.sr_conn_options_t = C.SR_CONN_DEFAULT
 
-	moduleName := C.CString("ietf-interfaces")
-	defer C.free(unsafe.Pointer(moduleName))
-
-	rc = C.sr_connect(connOpts, &connection)
+	/*	moduleName := C.CString("ietf-interfaces")
+		defer C.free(unsafe.Pointer(moduleName))
+	*/
+	rc = C.sr_connect(conn.connOpts, &conn.connection)
 	if C.SR_ERR_OK != rc {
-		fmt.Printf("Error by sr_connect: %s\n", C.sr_strerror(rc))
-		return
-	} else {
-		defer C.sr_disconnect(connection)
+		return conn, fmt.Errorf("error by sr_connect: %v", C.sr_strerror(rc))
 	}
 
-	fmt.Println("Successfully connected to sysrepo")
+	return conn, nil
+}
 
+func Disconnect(conn Connection) error {
+	var rc C.int = C.SR_ERR_OK
+	rc = C.sr_disconnect(conn.connection)
+	if C.SR_ERR_OK != rc {
+		return fmt.Errorf("error by sr_connect: %v", C.sr_strerror(rc))
+	}
+	return nil
 }
