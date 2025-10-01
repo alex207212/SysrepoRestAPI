@@ -10,11 +10,6 @@ import (
 	"fmt"
 )
 
-type Connection struct {
-	connection *C.sr_conn_ctx_t
-	connOpts   C.sr_conn_options_t
-}
-
 func Connect() (Connection, error) {
 	var conn = Connection{connection: nil, connOpts: C.SR_CONN_DEFAULT}
 	var rc C.int = C.SR_ERR_OK

@@ -37,6 +37,11 @@ func (ds Datastore) to_sr_datastore_t() C.sr_datastore_t {
 	return 0
 }
 
+type Connection struct {
+	connection *C.sr_conn_ctx_t
+	connOpts   C.sr_conn_options_t
+}
+
 type Session struct {
 	session   *C.sr_session_ctx_t
 	datastore C.sr_datastore_t
