@@ -25,6 +25,25 @@ func main() {
 	}
 	defer closeSession(sess)
 	fmt.Println("Started session")
+
+	/*	modules, err := sysrepo.GetDefaultModules()
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		for _, module := range modules {
+			fmt.Println(module)
+		}
+	*/
+	fmt.Printf("Current log level: %v; setting to %v\n", sysrepo.GetLogLevel(), sysrepo.SR_LL_DBG)
+	sysrepo.SetLogLevel(sysrepo.SR_LL_DBG)
+
+	//"ietf-interfaces", "ietf-datastores"
+	err = sysrepo.PrintCurrentConfig(sess, "ietf-netconf-acm")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 }
 
 func disconnect(conn sysrepo.Connection) {
