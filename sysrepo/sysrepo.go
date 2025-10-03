@@ -12,19 +12,21 @@ import (
 	"unsafe"
 )
 
-func Connect() (Connection, error) {
+func Connect() (*Connection, error) {
 	var conn = Connection{connection: nil, connOpts: C.SR_CONN_DEFAULT}
 	var rc C.int = C.SR_ERR_OK
 
-	rc = C.sr_connect(conn.connOpts, &conn.connection)
-	if C.SR_ERR_OK != rc {
-		return conn, fmt.Errorf("error by sr_connect: %v", C.sr_strerror(rc))
+	var connCtx *C.sr_conn_ctx_t
+	rc = C.sr_connect(conn.connOpts, &connCtx)
+	if err := CheckForError(rc); err != nil {
+		return nil, err
 	}
+	conn.connection = connCtx
 
-	return conn, nil
+	return &conn, nil
 }
 
-func Disconnect(conn Connection) error {
+func Disconnect(conn *Connection) error {
 	var rc C.int = C.SR_ERR_OK
 	rc = C.sr_disconnect(conn.connection)
 	if C.SR_ERR_OK != rc {
@@ -33,17 +35,17 @@ func Disconnect(conn Connection) error {
 	return nil
 }
 
-func StartSession(conn Connection, ds Datastore) (Session, error) {
+func StartSession(conn *Connection, ds Datastore) (*Session, error) {
 	var rc C.int = C.SR_ERR_OK
 	var sess = Session{session: nil, datastore: ds.to_sr_datastore_t()}
 	rc = C.sr_session_start(conn.connection, sess.datastore, &sess.session)
 	if C.SR_ERR_OK != rc {
-		return sess, fmt.Errorf("error by sr_session_start: %v", C.sr_strerror(rc))
+		return nil, fmt.Errorf("error by sr_session_start: %v", C.sr_strerror(rc))
 	}
-	return sess, nil
+	return &sess, nil
 }
 
-func StopSession(sess Session) error {
+func StopSession(sess *Session) error {
 	var rc C.int = C.SR_ERR_OK
 	rc = C.sr_session_stop(sess.session)
 	if C.SR_ERR_OK != rc {
@@ -64,7 +66,7 @@ func GetDefaultModules() ([]string, error) {
 	return modules[:], nil
 }
 
-func PrintCurrentConfig(sess Session, module string) error {
+func GetValuesForModule(sess *Session, module string) ([]string, error) {
 	xpath := C.CString(fmt.Sprintf("/%s:*//*", module))
 	defer C.free(unsafe.Pointer(xpath))
 
@@ -73,34 +75,28 @@ func PrintCurrentConfig(sess Session, module string) error {
 	var rc C.int = C.SR_ERR_OK
 
 	rc = C.sr_get_items(sess.session, xpath, 0, 0, &values, &count)
-	if C.SR_ERR_OK != rc {
-		c_err_msg := C.sr_strerror(rc)
-		// Do not free c_err_msg (from above) as it returns values from statically allocated array
-
-		err_msg := C.GoString(c_err_msg)
-		return fmt.Errorf("error by sr_get_items: %v", err_msg)
+	if err := CheckForError(rc); err != nil {
+		return nil, err
 	}
 	defer C.sr_free_values(values, count)
 
+	result := make([]string, count)
 	var i C.size_t = 0
 	for i = 0; i < count; i++ {
 		val := C.get_val(values, i)
-		sysrepo_print_value(val)
-		// you can manually print the value, like in the function
-		// func print_value(value *C.sr_val_t)
+		result[i] = sysrepo_get_value(val)
 	}
 
-	return nil
+	return result, nil
 }
 
-func sysrepo_print_value(value *C.sr_val_t) {
+func sysrepo_get_value(value *C.sr_val_t) string {
 	var mem *C.char = nil
 	rc := C.sr_print_val_mem(&mem, value)
 	if C.SR_ERR_OK != rc {
-		fmt.Printf("Error by sr_print_val_mem: %d", C.sr_strerror(rc))
-	} else {
-		fmt.Printf("%s", C.GoString(mem))
+		return fmt.Sprintf("Error by sr_print_val_mem: %d", C.sr_strerror(rc))
 	}
+	return fmt.Sprintf("%s", C.GoString(mem))
 }
 
 /*
