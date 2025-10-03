@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
+	"os/signal"
 
 	"google.golang.org/grpc"
 )
@@ -51,6 +53,7 @@ func main() {
 		fmt.Println(err)
 		return
 	}
+	go interruptMonitor()
 	defer disconnect()
 	fmt.Println("Connected to sysrepo")
 	fmt.Printf("Current log level: %v; setting to %v\n", sysrepo.GetLogLevel(), sysrepo.SR_LL_DBG)
@@ -85,13 +88,22 @@ func main1() {
 	*/
 }
 
+func interruptMonitor() {
+	c := make(chan os.Signal)
+	signal.Notify(c, os.Interrupt)
+	for _ = range c {
+		disconnect()
+		os.Exit(0)
+	}
+}
+
 func disconnect() {
 	err := sysrepo.Disconnect(srServer.connection)
 	if err != nil {
 		fmt.Println(err)
 	}
 	srServer.connection = nil
-	fmt.Println("Disconnected from sysrepo")
+	fmt.Println("\nDisconnected from sysrepo")
 }
 
 func closeSession(sess *sysrepo.Session) {

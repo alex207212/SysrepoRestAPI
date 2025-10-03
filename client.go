@@ -32,5 +32,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("could not get items. Error: %v", err)
 	}
-	fmt.Printf("GetItems: %v", r)
+	for i := range r.Values {
+		fmt.Print(r.Values[i])
+	}
 }
