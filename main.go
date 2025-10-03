@@ -10,6 +10,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"sync"
 
 	"google.golang.org/grpc"
 )
@@ -20,8 +21,9 @@ type server struct {
 }
 
 var (
-	port     = flag.Int("port", 50051, "The server port")
-	srServer *server
+	port        = flag.Int("port", 50051, "The server port")
+	srServer    *server
+	disconnLock = sync.Mutex{}
 )
 
 func (s *server) GetItems(_ context.Context, in *pb.GetItemsRequest) (*pb.ValuesList, error) {
@@ -67,27 +69,6 @@ func main() {
 	}
 }
 
-func main1() {
-
-	/*	modules, err := sysrepo.GetDefaultModules()
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-		for _, module := range modules {
-			fmt.Println(module)
-		}
-	*/
-
-	//"ietf-interfaces", "ietf-datastores"
-	/*	err := sysrepo.PrintCurrentConfig(sess, "ietf-netconf-acm")
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-	*/
-}
-
 func interruptMonitor() {
 	c := make(chan os.Signal)
 	signal.Notify(c, os.Interrupt)
@@ -98,6 +79,11 @@ func interruptMonitor() {
 }
 
 func disconnect() {
+	disconnLock.Lock()
+	defer disconnLock.Unlock()
+	if srServer.connection == nil {
+		return
+	}
 	err := sysrepo.Disconnect(srServer.connection)
 	if err != nil {
 		fmt.Println(err)
