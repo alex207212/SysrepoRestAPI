@@ -1,13 +1,45 @@
 package main
 
 import (
+	pb "SysrepoRestAPI/demo_proto"
 	"SysrepoRestAPI/sysrepo"
+	"context"
+	"flag"
 	"fmt"
+	"log"
+	"net"
+
+	"google.golang.org/grpc"
 )
 
-//import "sysrepo"
+var (
+	port = flag.Int("port", 50051, "The server port")
+)
+
+type server struct {
+	pb.UnimplementedSysrepoServerServer
+}
+
+func (s *server) GetItems(_ context.Context, in *pb.GetItemsRequest) (*pb.ValuesList, error) {
+	log.Printf("GetItems called with xpath: %s", in.Xpath)
+	return &pb.ValuesList{Values: []string{"123", "456", "789", "012"}}, nil
+}
 
 func main() {
+	flag.Parse()
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+	s := grpc.NewServer()
+	pb.RegisterSysrepoServerServer(s, &server{})
+	fmt.Printf("server listening at %v", lis.Addr())
+	if err := s.Serve(lis); err != nil {
+		log.Fatalf("failed to serve: %v", err)
+	}
+}
+
+func main1() {
 	// Open connection
 	conn, err := sysrepo.Connect()
 	if err != nil {

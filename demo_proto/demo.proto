@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+option go_package = "SysrepoRestAPI/demo_proto";
+
+package sysrepo_demo;
+
+service SysrepoServer {
+  rpc GetItems (GetItemsRequest) returns (ValuesList) {}
+}
+
+message GetItemsRequest {
+  string xpath = 1;
+}
+
+message ValuesList {
+  repeated string values = 1;
+}
